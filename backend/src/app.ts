@@ -4,7 +4,10 @@ import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { rateLimit } from 'express-rate-limit'
-import authRoutes from './modules/auth/auth.routes'
+import authRoutes     from './modules/auth/auth.routes'
+import exerciseRoutes from './modules/exercises/exercise.routes'
+import workoutRoutes  from './modules/workouts/workout.routes'
+import templateRoutes from './modules/templates/template.routes'
 
 const app = express()
 
@@ -12,7 +15,7 @@ const app = express()
 app.use(helmet())
 app.use(cors({
   origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
-  credentials: true,   // required for httpOnly refresh token cookie
+  credentials: true,
 }))
 
 // ── Body & cookie parsers ──────────────────────────────────
@@ -21,7 +24,7 @@ app.use(cookieParser())
 
 // ── Global rate limiting ───────────────────────────────────
 app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,   // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
@@ -34,12 +37,12 @@ app.get('/health', (_req, res) => {
 })
 
 // ── API routes ─────────────────────────────────────────────
-app.use('/api/auth',         authRoutes)
-// app.use('/api/users',        userRoutes)    — M1
-// app.use('/api/workouts',     workoutRoutes) — M2
-// app.use('/api/exercises',    exerciseRoutes)— M2
-// app.use('/api/templates',    templateRoutes)— M2
-// app.use('/api/achievements', achievementRoutes) — M3
+app.use('/api/auth',      authRoutes)
+app.use('/api/exercises', exerciseRoutes)
+app.use('/api/workouts',  workoutRoutes)
+app.use('/api/templates', templateRoutes)
+// app.use('/api/users',         userRoutes)        — M4
+// app.use('/api/achievements',  achievementRoutes) — M3
 
 // ── 404 handler ───────────────────────────────────────────
 app.use((_req, res) => {
