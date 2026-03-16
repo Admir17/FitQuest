@@ -2,7 +2,9 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
+import cookieParser from 'cookie-parser'
 import { rateLimit } from 'express-rate-limit'
+import authRoutes from './modules/auth/auth.routes'
 
 const app = express()
 
@@ -13,8 +15,9 @@ app.use(cors({
   credentials: true,   // required for httpOnly refresh token cookie
 }))
 
-// ── Body parser ────────────────────────────────────────────
+// ── Body & cookie parsers ──────────────────────────────────
 app.use(express.json({ limit: '10kb' }))
+app.use(cookieParser())
 
 // ── Global rate limiting ───────────────────────────────────
 app.use(rateLimit({
@@ -30,13 +33,13 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// ── API routes (added incrementally per milestone) ────────
-// app.use('/api/auth',         authRoutes)
-// app.use('/api/users',        userRoutes)
-// app.use('/api/workouts',     workoutRoutes)
-// app.use('/api/exercises',    exerciseRoutes)
-// app.use('/api/templates',    templateRoutes)
-// app.use('/api/achievements', achievementRoutes)
+// ── API routes ─────────────────────────────────────────────
+app.use('/api/auth',         authRoutes)
+// app.use('/api/users',        userRoutes)    — M1
+// app.use('/api/workouts',     workoutRoutes) — M2
+// app.use('/api/exercises',    exerciseRoutes)— M2
+// app.use('/api/templates',    templateRoutes)— M2
+// app.use('/api/achievements', achievementRoutes) — M3
 
 // ── 404 handler ───────────────────────────────────────────
 app.use((_req, res) => {
