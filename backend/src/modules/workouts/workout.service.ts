@@ -6,6 +6,16 @@ import { calculateSetXp, levelForXp } from '../../utils/xp.calculator'
 // ── List sessions ─────────────────────────────────────────────
 
 export async function listSessions(userId: string): Promise<WorkoutSession[]> {
+  // Clean up empty unfinished sessions older than 1 hour before listing
+  await query(
+    `DELETE FROM workout_sessions
+     WHERE user_id = $1
+       AND finished_at IS NULL
+       AND started_at < NOW() - INTERVAL '1 hour'
+       AND id NOT IN (SELECT session_id FROM workout_sets)`,
+    [userId]
+  )
+
   const result = await query<WorkoutSession>(
     `SELECT * FROM workout_sessions
      WHERE user_id = $1

@@ -7,7 +7,6 @@ import { ApiError } from '../../../lib/api'
 
 export default function LoginPage() {
   const { login } = useAuth()
-
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState<string | null>(null)
@@ -20,57 +19,63 @@ export default function LoginPage() {
     try {
       await login(email, password)
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message)
-      } else {
-        setError('Etwas ist schiefgelaufen. Bitte versuche es erneut.')
-      }
+      setError(err instanceof ApiError ? err.message : 'Etwas ist schiefgelaufen.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8" style={{ background: 'var(--bg-primary)' }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">FitQuest</h1>
-          <p className="mt-2 text-gray-500 text-sm">Melde dich an und setz deinen Streak fort</p>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'var(--accent-light)' }}>
+            <span className="text-2xl">💪</span>
+          </div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>FitQuest</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Melde dich an und setz deinen Streak fort</p>
         </div>
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
+
+        <div className="rounded-2xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            <div className="rounded-xl px-4 py-3 mb-4 text-sm" style={{ background: 'var(--red-light)', border: '1px solid var(--red)', color: 'var(--red)' }}>
               {error}
             </div>
           )}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">E-Mail</label>
-            <input
-              id="email" type="email" required autoComplete="email"
-              value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="du@beispiel.de"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Passwort</label>
-            <input
-              id="password" type="password" required autoComplete="current-password"
-              value={password} onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="••••••••"
-            />
-          </div>
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
-          >
-            {loading ? 'Anmelden…' : 'Anmelden'}
-          </button>
-        </form>
-        <p className="text-center mt-4 text-sm text-gray-500">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>E-Mail</label>
+              <input
+                type="email" required autoComplete="email" value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="du@beispiel.ch"
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition-all"
+                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)', '--tw-ring-color': 'var(--accent)' } as any}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Passwort</label>
+              <input
+                type="password" required autoComplete="current-password" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 transition-all"
+                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' } as any}
+              />
+            </div>
+            <button
+              type="submit" disabled={loading}
+              className="w-full rounded-xl py-3 text-sm font-semibold transition-all active:scale-95"
+              style={{ background: loading ? 'var(--accent-hover)' : 'var(--accent)', color: 'white', opacity: loading ? 0.7 : 1 }}
+            >
+              {loading ? 'Anmelden…' : 'Anmelden'}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center mt-5 text-sm" style={{ color: 'var(--text-secondary)' }}>
           Noch kein Konto?{' '}
-          <Link href="/register" className="text-indigo-600 hover:underline font-medium">Registrieren</Link>
+          <Link href="/register" className="font-medium" style={{ color: 'var(--accent)' }}>Registrieren</Link>
         </p>
       </div>
     </div>

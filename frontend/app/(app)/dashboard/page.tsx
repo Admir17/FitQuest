@@ -14,12 +14,9 @@ export default function DashboardPage() {
   const { startSession } = useWorkout()
   const [starting, setStarting] = useState(false)
 
-  // Always reload user on dashboard visit to get fresh XP/level
   useEffect(() => {
     if (!token) { router.push('/login'); return }
-    userApi.getMe(token)
-      .then((res: any) => setUser(res.data))
-      .catch(() => router.push('/login'))
+    userApi.getMe(token).then((res: any) => setUser(res.data)).catch(() => router.push('/login'))
   }, [token, router, setUser])
 
   async function handleStart() {
@@ -32,32 +29,60 @@ export default function DashboardPage() {
     }
   }
 
-  if (!user) {
-    return <div className="flex items-center justify-center py-16"><div className="text-gray-400 text-sm">Laden…</div></div>
-  }
+  if (!user) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Laden…</div>
+    </div>
+  )
+
+  const xpForNext = Math.round(100 * Math.pow(user.level, 1.6))
+  const xpProgress = Math.min((user.xp_total % xpForNext) / xpForNext * 100, 100)
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Willkommen zurück, {user.username}!</h1>
-      <p className="text-gray-400 text-sm mb-8">Level {user.level} · {user.xp_total} XP gesamt</p>
+    <div className="space-y-4">
+      {/* User card */}
+      <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              Hallo, {user.username}!
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Level {user.level} · {user.xp_total} XP gesamt</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold"
+            style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
+            {user.level}
+          </div>
+        </div>
+        {/* XP progress bar */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span>Fortschritt zu Level {user.level + 1}</span>
+            <span>{Math.round(xpProgress)}%</span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${xpProgress}%`, background: 'var(--accent)' }} />
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button
-          onClick={handleStart} disabled={starting}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-2xl p-6 transition-colors text-left"
-        >
-          <p className="text-2xl mb-2">💪</p>
-          <p className="font-semibold">{starting ? 'Startet…' : 'Workout starten'}</p>
-          <p className="text-indigo-200 text-sm mt-1">Sets loggen und XP verdienen</p>
+      {/* Actions */}
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={handleStart} disabled={starting}
+          className="rounded-2xl p-5 text-left transition-all active:scale-95"
+          style={{ background: 'var(--accent)', opacity: starting ? 0.7 : 1 }}>
+          <span className="text-2xl block mb-2">💪</span>
+          <p className="font-semibold text-white text-sm">{starting ? 'Startet…' : 'Workout starten'}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>XP verdienen</p>
         </button>
 
-        <button
-          onClick={() => router.push('/workouts')}
-          className="bg-white border border-gray-200 hover:border-indigo-300 rounded-2xl p-6 transition-colors text-left"
-        >
-          <p className="text-2xl mb-2">📋</p>
-          <p className="font-semibold text-gray-900">Workout-Verlauf</p>
-          <p className="text-gray-400 text-sm mt-1">Vergangene Workouts ansehen</p>
+        <button onClick={() => router.push('/workouts')}
+          className="rounded-2xl p-5 text-left transition-all active:scale-95"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <span className="text-2xl block mb-2">📋</span>
+          <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Verlauf</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Vergangene Workouts</p>
         </button>
       </div>
     </div>
