@@ -71,7 +71,46 @@ export async function finishSession(id: string): Promise<WorkoutSession> {
 // ── Delete session ────────────────────────────────────────────
 
 export async function deleteSession(id: string): Promise<void> {
-  await query('DELETE FROM workout_sessions WHERE id = $1', [id])
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+
+    // Get total XP earned in this session before deleting
+    const sessionResult = await client.query<{ user_id: string; xp_earned: number }>(
+      'SELECT user_id, xp_earned FROM workout_sessions WHERE id = $1',
+      [id]
+    )
+    const session = sessionResult.rows[0]
+    if (!session) { await client.query('ROLLBACK'); return }
+
+    // Deduct XP from user and remove related XP logs
+    if (session.xp_earned > 0) {
+      // Deduct XP and recalculate level
+      const updatedUser = await client.query<{ xp_total: number }>(
+        'UPDATE users SET xp_total = GREATEST(0, xp_total - $1) WHERE id = $2 RETURNING xp_total',
+        [session.xp_earned, session.user_id]
+      )
+      const newXp = updatedUser.rows[0].xp_total
+      const newLevel = levelForXp(newXp)
+      await client.query('UPDATE users SET level = $1 WHERE id = $2', [newLevel, session.user_id])
+      await client.query(
+        `DELETE FROM xp_logs WHERE source_id IN (
+           SELECT id FROM workout_sets WHERE session_id = $1
+         )`,
+        [id]
+      )
+    }
+
+    // Delete session — cascades to workout_sets
+    await client.query('DELETE FROM workout_sessions WHERE id = $1', [id])
+
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 }
 
 // ── Add set (synchronous XP award) ───────────────────────────
@@ -188,5 +227,79 @@ export async function addSet(
 // ── Delete set ────────────────────────────────────────────────
 
 export async function deleteSet(setId: string): Promise<void> {
-  await query('DELETE FROM workout_sets WHERE id = $1', [setId])
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+
+    // Get set XP and session info before deleting
+    const setResult = await client.query<{ xp_awarded: number; session_id: string }>(
+      'SELECT xp_awarded, session_id FROM workout_sets WHERE id = $1',
+      [setId]
+    )
+    const set = setResult.rows[0]
+    if (!set) { await client.query('ROLLBACK'); return }
+
+    // Get user_id from session
+    const sessionResult = await client.query<{ user_id: string }>(
+      'SELECT user_id FROM workout_sessions WHERE id = $1',
+      [set.session_id]
+    )
+    const userId = sessionResult.rows[0]?.user_id
+
+    // Delete the set
+    await client.query('DELETE FROM workout_sets WHERE id = $1', [setId])
+
+    // Check if session has no sets left — auto delete if empty
+    const remainingSets = await client.query(
+      'SELECT COUNT(*) as count FROM workout_sets WHERE session_id = $1',
+      [set.session_id]
+    )
+    if (parseInt(remainingSets.rows[0].count) === 0) {
+      // Still deduct XP before deleting the session
+      if (userId && set.xp_awarded > 0) {
+        const updated = await client.query<{ xp_total: number }>(
+          'UPDATE users SET xp_total = GREATEST(0, xp_total - $1) WHERE id = $2 RETURNING xp_total',
+          [set.xp_awarded, userId]
+        )
+        const newXp = updated.rows[0]?.xp_total ?? 0
+        await client.query('UPDATE users SET level = $1 WHERE id = $2', [levelForXp(newXp), userId])
+        await client.query('DELETE FROM xp_logs WHERE source_id = $1', [setId])
+      }
+      await client.query('DELETE FROM workout_sessions WHERE id = $1', [set.session_id])
+      await client.query('COMMIT')
+      return
+    }
+
+    if (userId && set.xp_awarded > 0) {
+      // Deduct XP from user and session
+      const updated = await client.query<{ xp_total: number }>(
+        'UPDATE users SET xp_total = GREATEST(0, xp_total - $1) WHERE id = $2 RETURNING xp_total',
+        [set.xp_awarded, userId]
+      )
+      const newXp = updated.rows[0]?.xp_total ?? 0
+      await client.query('UPDATE users SET level = $1 WHERE id = $2', [levelForXp(newXp), userId])
+      await client.query(
+        'UPDATE workout_sessions SET xp_earned = GREATEST(0, xp_earned - $1) WHERE id = $2',
+        [set.xp_awarded, set.session_id]
+      )
+      await client.query('DELETE FROM xp_logs WHERE source_id = $1', [setId])
+    }
+
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
+// ── Rename session ────────────────────────────────────────────
+
+export async function renameSession(id: string, name: string): Promise<WorkoutSession> {
+  const result = await query<WorkoutSession>(
+    'UPDATE workout_sessions SET name = $1 WHERE id = $2 RETURNING *',
+    [name, id]
+  )
+  return result.rows[0]
 }

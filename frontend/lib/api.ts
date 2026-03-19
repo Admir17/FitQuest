@@ -34,6 +34,7 @@ async function request<T>(
     throw new ApiError(res.status, body.error ?? 'Request failed', body.details)
   }
 
+  if (res.status === 204) return null as T
   return res.json()
 }
 
@@ -108,6 +109,19 @@ export const workoutApi = {
     request(`/workouts/${workoutId}/sets`, {
       method: 'POST',
       body: JSON.stringify(data),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  rename: (token: string, id: string, name: string) =>
+    request(`/workouts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  remove: (token: string, id: string) =>
+    request(`/workouts/${id}`, {
+      method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     }),
 

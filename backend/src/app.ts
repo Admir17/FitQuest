@@ -5,6 +5,7 @@ import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { rateLimit } from 'express-rate-limit'
 import authRoutes     from './modules/auth/auth.routes'
+import userRoutes     from './modules/users/user.routes'
 import exerciseRoutes from './modules/exercises/exercise.routes'
 import workoutRoutes  from './modules/workouts/workout.routes'
 import templateRoutes from './modules/templates/template.routes'
@@ -38,11 +39,11 @@ app.get('/health', (_req, res) => {
 
 // ── API routes ─────────────────────────────────────────────
 app.use('/api/auth',      authRoutes)
+app.use('/api/users',     userRoutes)
 app.use('/api/exercises', exerciseRoutes)
 app.use('/api/workouts',  workoutRoutes)
 app.use('/api/templates', templateRoutes)
-// app.use('/api/users',         userRoutes)        — M4
-// app.use('/api/achievements',  achievementRoutes) — M3
+// app.use('/api/achievements', achievementRoutes) — M3
 
 // ── 404 handler ───────────────────────────────────────────
 app.use((_req, res) => {

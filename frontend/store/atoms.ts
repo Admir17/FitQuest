@@ -1,9 +1,25 @@
 import { atom } from 'jotai'
 
-// ── Auth ─────────────────────────────────────────────────────
+const getStoredToken = () => {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('fq_token')
+}
 
-/** Short-lived JWT access token — kept in memory only, never in localStorage */
 export const accessTokenAtom = atom<string | null>(null)
+
+export const accessTokenWithStorageAtom = atom(
+  (get) => get(accessTokenAtom) ?? getStoredToken(),
+  (_get, set, token: string | null) => {
+    set(accessTokenAtom, token)
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('fq_token', token)
+      } else {
+        localStorage.removeItem('fq_token')
+      }
+    }
+  }
+)
 
 export const currentUserAtom = atom<{
   id: string
@@ -14,16 +30,11 @@ export const currentUserAtom = atom<{
   level: number
 } | null>(null)
 
-// ── Streak ───────────────────────────────────────────────────
-
 export const streakAtom = atom<{
   current_streak: number
   longest_streak: number
 } | null>(null)
 
-// ── Active workout ───────────────────────────────────────────
-
-/** Populated while a workout session is in progress */
 export const activeWorkoutAtom = atom<{
   id: string
   name: string
@@ -39,12 +50,8 @@ export const activeWorkoutAtom = atom<{
   }>
 } | null>(null)
 
-// ── Game events ──────────────────────────────────────────────
+export const workoutFinishedAtom = atom<{ xp: number; levelUp?: number } | null>(null)
 
-/**
- * Events returned by the API (e.g. XP_GAINED, LEVEL_UP) that still need
- * to be shown as animations/toasts. The UI dequeues them one by one.
- */
 export const pendingEventsAtom = atom<Array<{
   type: 'XP_GAINED' | 'LEVEL_UP' | 'ACHIEVEMENT_UNLOCKED' | 'STREAK_UPDATED'
   payload: Record<string, unknown>

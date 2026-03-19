@@ -61,6 +61,20 @@ export async function start(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+/** PUT /api/workouts/:id */
+export async function rename(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { name } = req.body
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ error: 'Name is required.' })
+    }
+    const session = await workoutService.renameSession(req.params.id, name.trim())
+    res.json({ data: session })
+  } catch (err) {
+    next(err)
+  }
+}
+
 /** PUT /api/workouts/:id/finish */
 export async function finish(req: Request, res: Response, next: NextFunction) {
   try {
