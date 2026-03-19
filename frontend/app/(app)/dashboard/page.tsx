@@ -11,7 +11,6 @@ export default function DashboardPage() {
   const router          = useRouter()
   const [user, setUser] = useAtom(currentUserAtom)
   const [token]         = useAtom(accessTokenWithStorageAtom)
-  const { startSession } = useWorkout()
   const [starting, setStarting] = useState(false)
 
   useEffect(() => {
@@ -22,8 +21,7 @@ export default function DashboardPage() {
   async function handleStart() {
     setStarting(true)
     try {
-      const session = await startSession('Neues Workout')
-      router.push(`/workouts/${session.id}`)
+      router.push('/workouts/pending')
     } finally {
       setStarting(false)
     }

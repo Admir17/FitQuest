@@ -3,20 +3,39 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAtom, useSetAtom } from 'jotai'
+import { useEffect, useState } from 'react'
 import { accessTokenWithStorageAtom, currentUserAtom } from '../../store/atoms'
-import { authApi } from '../../lib/api'
+import { authApi, userApi } from '../../lib/api'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router   = useRouter()
-  const [user]   = useAtom(currentUserAtom)
+  const [token]  = useAtom(accessTokenWithStorageAtom)
+  const [user, setUser] = useAtom(currentUserAtom)
   const setToken = useSetAtom(accessTokenWithStorageAtom)
-  const setUser  = useSetAtom(currentUserAtom)
+  const [displayUser, setDisplayUser] = useState(user)
+
+  // Reload user on pathname change AND every 3 seconds to keep XP live
+  useEffect(() => {
+    if (!token) return
+    const load = () => {
+      userApi.getMe(token)
+        .then((res: any) => {
+          setUser(res.data)
+          setDisplayUser(res.data)
+        })
+        .catch(() => {})
+    }
+    load()
+    const interval = setInterval(load, 1000)
+    return () => clearInterval(interval)
+  }, [pathname, token])
 
   async function handleLogout() {
     try { await authApi.logout() } finally {
       setToken(null)
       setUser(null)
+      setDisplayUser(null)
       router.push('/login')
     }
   }
@@ -49,9 +68,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            {user && (
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Lvl {user.level} · {user.xp_total} XP
+            {displayUser && (
+              <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }}>
+                ⭐ Lvl {displayUser.level} · {displayUser.xp_total} XP
               </span>
             )}
             <button onClick={handleLogout}
@@ -69,14 +88,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Link href="/dashboard" className="font-bold text-base" style={{ color: 'var(--accent)' }}>
           FitQuest
         </Link>
-        {user && (
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Lvl {user.level} · {user.xp_total} XP
+        {displayUser && (
+          <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }}>
+            ⭐ Lvl {displayUser.level} · {displayUser.xp_total} XP
           </span>
         )}
       </nav>
 
-      {/* Page content */}
       <main className="max-w-2xl mx-auto px-4 py-5">
         {children}
       </main>
@@ -95,8 +113,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           )
         })}
-        <button
-          onClick={handleLogout}
+        <button onClick={handleLogout}
           className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all"
           style={{ color: 'var(--text-muted)' }}>
           <span className="text-xl leading-none">👤</span>

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAtom, useAtomValue } from 'jotai'
-import { accessTokenWithStorageAtom, workoutFinishedAtom } from '../../../store/atoms'
-import { workoutApi } from '../../../lib/api'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { accessTokenWithStorageAtom, workoutFinishedAtom, currentUserAtom } from '../../../store/atoms'
+import { workoutApi, userApi } from '../../../lib/api'
 import { useWorkout } from '../../../hooks/useWorkout'
 
 interface Session {
@@ -24,8 +24,7 @@ export default function WorkoutsPage() {
   const [starting, setStarting]               = useState(false)
   const [workoutFinished, setWorkoutFinished] = useAtom(workoutFinishedAtom)
   const [showToast, setShowToast]             = useState(false)
-  const { startSession }                      = useWorkout()
-
+  
   async function load() {
     if (!token) return
     try {
@@ -52,8 +51,7 @@ export default function WorkoutsPage() {
   async function handleNewWorkout() {
     setStarting(true)
     try {
-      const session = await startSession('Neues Workout')
-      router.push(`/workouts/${session.id}`)
+      router.push('/workouts/pending')
     } finally {
       setStarting(false)
     }
@@ -64,6 +62,8 @@ export default function WorkoutsPage() {
     await workoutApi.remove(token, id)
     setDeleteId(null)
     load()
+    // Refresh user XP in nav
+    userApi.getMe(token).then((res: any) => setUser(res.data)).catch(() => {})
   }
 
   const cardStyle = { background: 'var(--bg-card)', border: '1px solid var(--border)' }
@@ -122,7 +122,7 @@ export default function WorkoutsPage() {
 
       {/* Delete confirmation */}
       {deleteId && (
-        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pb-28 sm:pb-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6" style={cardStyle}>
             <h2 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Workout löschen?</h2>
             <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Alle Sets und XP werden unwiderruflich gelöscht.</p>
@@ -144,7 +144,7 @@ export default function WorkoutsPage() {
 
       {/* XP / Level Up toast */}
       {workoutFinished && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+        <div className={`fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
           <div className="rounded-2xl shadow-2xl overflow-hidden min-w-[260px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             {workoutFinished.levelUp ? (
               <div className="px-5 py-4">

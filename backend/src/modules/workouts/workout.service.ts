@@ -68,14 +68,88 @@ export async function startSession(
 // ── Finish session ────────────────────────────────────────────
 
 export async function finishSession(id: string): Promise<WorkoutSession> {
-  const result = await query<WorkoutSession>(
-    `UPDATE workout_sessions
-     SET finished_at = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [id]
-  )
-  return result.rows[0]
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+
+    // Get session + user
+    const sessionRes = await client.query<{ user_id: string }>(
+      'SELECT user_id FROM workout_sessions WHERE id = $1',
+      [id]
+    )
+    const userId = sessionRes.rows[0]?.user_id
+    if (!userId) throw new Error('SESSION_NOT_FOUND')
+
+    // Get all sets for this session
+    const setsRes = await client.query<{
+      id: string; exercise_id: string; set_number: number;
+      reps: number | null; weight_kg: number | null; duration_sec: number | null
+    }>(
+      'SELECT id, exercise_id, set_number, reps, weight_kg, duration_sec FROM workout_sets WHERE session_id = $1',
+      [id]
+    )
+
+    // Get streak for multiplier
+    const streakRes = await client.query<{ current_streak: number }>(
+      'SELECT current_streak FROM streaks WHERE user_id = $1',
+      [userId]
+    )
+    const streak_days = streakRes.rows[0]?.current_streak ?? 0
+
+    // Calculate total XP across all sets
+    let totalXp = 0
+    for (const set of setsRes.rows) {
+      const exRes = await client.query<{ xp_per_set: number }>(
+        'SELECT xp_per_set FROM exercises WHERE id = $1',
+        [set.exercise_id]
+      )
+      const xp_per_set = exRes.rows[0]?.xp_per_set ?? 10
+      const xp = calculateSetXp({
+        xp_per_set,
+        reps: set.reps ?? undefined,
+        weight_kg: set.weight_kg ?? undefined,
+        streak_days,
+      })
+      // Update each set's xp_awarded
+      await client.query(
+        'UPDATE workout_sets SET xp_awarded = $1 WHERE id = $2',
+        [xp, set.id]
+      )
+      // Write XP log
+      await client.query(
+        `INSERT INTO xp_logs (user_id, source_id, source_type, xp_amount, reason)
+         VALUES ($1, $2, 'workout_set', $3, $4)`,
+        [userId, set.id, xp, `Set ${set.set_number} — exercise ${set.exercise_id}`]
+      )
+      totalXp += xp
+    }
+
+    // Award total XP to user
+    const userRes = await client.query<{ xp_total: number }>(
+      'UPDATE users SET xp_total = xp_total + $1 WHERE id = $2 RETURNING xp_total',
+      [totalXp, userId]
+    )
+    const newXpTotal = userRes.rows[0]?.xp_total ?? 0
+    const newLevel = levelForXp(newXpTotal)
+    await client.query('UPDATE users SET level = $1 WHERE id = $2', [newLevel, userId])
+
+    // Finish session and store total XP
+    const result = await client.query<WorkoutSession>(
+      `UPDATE workout_sessions
+       SET finished_at = NOW(), xp_earned = $1
+       WHERE id = $2
+       RETURNING *`,
+      [totalXp, id]
+    )
+
+    await client.query('COMMIT')
+    return result.rows[0]
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 }
 
 // ── Delete session ────────────────────────────────────────────
@@ -123,7 +197,7 @@ export async function deleteSession(id: string): Promise<void> {
   }
 }
 
-// ── Add set (synchronous XP award) ───────────────────────────
+// ── Add set (XP is awarded on session finish, not per set) ────
 
 export interface AddSetResult {
   set: WorkoutSet
@@ -163,7 +237,7 @@ export async function addSet(
     )
     const streak_days = streakResult.rows[0]?.current_streak ?? 0
 
-    // Calculate XP
+    // Preview XP (not awarded yet — awarded on session finish)
     const xp_awarded = calculateSetXp({
       xp_per_set,
       reps: data.reps,
@@ -171,7 +245,7 @@ export async function addSet(
       streak_days,
     })
 
-    // Insert the set
+    // Insert the set with xp_awarded = 0 (will be set on finish)
     const setResult = await client.query<WorkoutSet>(
       `INSERT INTO workout_sets
          (session_id, exercise_id, set_number, reps, weight_kg, duration_sec, xp_awarded)
@@ -184,45 +258,12 @@ export async function addSet(
         data.reps ?? null,
         data.weight_kg ?? null,
         data.duration_sec ?? null,
-        xp_awarded,
+        0,
       ]
     )
     const set = setResult.rows[0]
 
-    // Write XP log entry
-    await client.query(
-      `INSERT INTO xp_logs (user_id, source_id, source_type, xp_amount, reason)
-       VALUES ($1, $2, 'workout_set', $3, $4)`,
-      [userId, set.id, xp_awarded, `Set ${data.set_number} — exercise ${data.exercise_id}`]
-    )
-
-    // Update user xp_total and recalculate level
-    const userResult = await client.query<{ xp_total: number; level: number }>(
-      `UPDATE users
-       SET xp_total = xp_total + $1
-       WHERE id = $2
-       RETURNING xp_total, level`,
-      [xp_awarded, userId]
-    )
-    const { xp_total, level: oldLevel } = userResult.rows[0]
-    const newLevel = levelForXp(xp_total)
-
-    events.push({ type: 'XP_GAINED', payload: { amount: xp_awarded, total: xp_total } })
-
-    // Check for level up
-    if (newLevel > oldLevel) {
-      await client.query(
-        'UPDATE users SET level = $1 WHERE id = $2',
-        [newLevel, userId]
-      )
-      events.push({ type: 'LEVEL_UP', payload: { newLevel } })
-    }
-
-    // Update session xp_earned
-    await client.query(
-      'UPDATE workout_sessions SET xp_earned = xp_earned + $1 WHERE id = $2',
-      [xp_awarded, sessionId]
-    )
+    events.push({ type: 'XP_GAINED', payload: { amount: xp_awarded, total: 0, preview: true } })
 
     await client.query('COMMIT')
     return { set, xp_awarded, events }
