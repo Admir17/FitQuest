@@ -78,8 +78,8 @@ export async function rename(req: Request, res: Response, next: NextFunction) {
 /** PUT /api/workouts/:id/finish */
 export async function finish(req: Request, res: Response, next: NextFunction) {
   try {
-    const session = await workoutService.finishSession(req.params.id)
-    res.json({ data: session })
+    const { session, events } = await workoutService.finishSession(req.params.id)
+    res.json({ data: session, events })
   } catch (err) {
     next(err)
   }

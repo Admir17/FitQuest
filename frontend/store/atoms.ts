@@ -37,7 +37,7 @@ const getStoredUser = (): User | null => {
   } catch { return null }
 }
 
-const userBaseAtom = atom<User | null>(getStoredUser())
+const userBaseAtom = atom<User | null>(null)
 
 export const currentUserAtom = atom(
   (get) => get(userBaseAtom),
@@ -71,7 +71,12 @@ export const activeWorkoutAtom = atom<{
   }>
 } | null>(null)
 
-export const workoutFinishedAtom = atom<{ xp: number; levelUp?: number } | null>(null)
+export const workoutFinishedAtom = atom<{
+  xp: number
+  levelUp?: number
+  achievements?: Array<{ name: string; icon: string; xp_reward: number }>
+  streak?: number
+} | null>(null)
 
 export const pendingEventsAtom = atom<Array<{
   type: 'XP_GAINED' | 'LEVEL_UP' | 'ACHIEVEMENT_UNLOCKED' | 'STREAK_UPDATED'

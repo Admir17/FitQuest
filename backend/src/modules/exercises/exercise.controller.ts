@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import * as exerciseService from './exercise.service'
+import { checkAndAwardAchievements } from '../gamification/achievement.service'
 
 // ── Validation schemas ────────────────────────────────────────
 
@@ -39,7 +40,9 @@ export async function create(req: Request, res: Response, next: NextFunction) {
     }
 
     const exercise = await exerciseService.createExercise(req.user!.id, body.data)
-    return res.status(201).json({ data: exercise })
+    // Check for custom_exercise_created achievement
+    const events = await checkAndAwardAchievements(req.user!.id).catch(() => [])
+    return res.status(201).json({ data: exercise, events })
   } catch (err) {
     if (err instanceof Error && err.message === 'EXERCISE_NAME_TAKEN') {
       return res.status(409).json({ error: 'You already have an exercise with this name.' })

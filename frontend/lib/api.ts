@@ -1,9 +1,6 @@
-// ============================================================
-// FitQuest — API client
-// Central HTTP client for all backend requests
-// ============================================================
+// ── API Client ───────────────────────────────────────────────
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
 
 export class ApiError extends Error {
   constructor(
@@ -12,21 +9,17 @@ export class ApiError extends Error {
     public details?: Record<string, string>
   ) {
     super(message)
-    this.name = 'ApiError'
   }
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    credentials: 'include',   // send httpOnly refresh token cookie automatically
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
+    credentials: 'include',
   })
 
   if (!res.ok) {
@@ -35,20 +28,18 @@ async function request<T>(
   }
 
   if (res.status === 204) return null as T
+
   return res.json()
 }
 
-// ── Auth ────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────
 
 export const authApi = {
   register: (data: { email: string; username: string; password: string }) =>
     request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
 
   login: (data: { email: string; password: string }) =>
-    request<{ accessToken: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
 
   logout: () =>
     request('/auth/logout', { method: 'POST' }),
@@ -57,23 +48,23 @@ export const authApi = {
     request<{ accessToken: string }>('/auth/refresh', { method: 'POST' }),
 }
 
-// ── Users ───────────────────────────────────────────────────
+// ── Achievements ─────────────────────────────────────────────
+
+export const achievementApi = {
+  list: (token: string) =>
+    request('/achievements', { headers: { Authorization: `Bearer ${token}` } }),
+  streak: (token: string) =>
+    request('/achievements/streak', { headers: { Authorization: `Bearer ${token}` } }),
+}
+
+// ── Users ────────────────────────────────────────────────────
 
 export const userApi = {
   getMe: (token: string) =>
     request('/users/me', { headers: { Authorization: `Bearer ${token}` } }),
-
-  getStats: (token: string) =>
-    request('/users/me/stats', { headers: { Authorization: `Bearer ${token}` } }),
-
-  getStreak: (token: string) =>
-    request('/users/me/streak', { headers: { Authorization: `Bearer ${token}` } }),
-
-  getAchievements: (token: string) =>
-    request('/users/me/achievements', { headers: { Authorization: `Bearer ${token}` } }),
 }
 
-// ── Workouts ────────────────────────────────────────────────
+// ── Workouts ─────────────────────────────────────────────────
 
 export const workoutApi = {
   start: (token: string, data: { name: string; template_id?: string }) =>
@@ -95,6 +86,19 @@ export const workoutApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
+  rename: (token: string, id: string, name: string) =>
+    request(`/workouts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  remove: (token: string, id: string) =>
+    request(`/workouts/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   addSet: (
     token: string,
     workoutId: string,
@@ -112,19 +116,6 @@ export const workoutApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  rename: (token: string, id: string, name: string) =>
-    request(`/workouts/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name }),
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-
-  remove: (token: string, id: string) =>
-    request(`/workouts/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-
   deleteSet: (token: string, workoutId: string, setId: string) =>
     request(`/workouts/${workoutId}/sets/${setId}`, {
       method: 'DELETE',
@@ -132,7 +123,7 @@ export const workoutApi = {
     }),
 }
 
-// ── Exercises ───────────────────────────────────────────────
+// ── Exercises ────────────────────────────────────────────────
 
 export const exerciseApi = {
   list: (token: string) =>
@@ -155,16 +146,9 @@ export const exerciseApi = {
     }),
 }
 
-// ── Templates ───────────────────────────────────────────────
+// ── Templates ────────────────────────────────────────────────
 
 export const templateApi = {
   list: () => request('/templates'),
   get:  (id: string) => request(`/templates/${id}`),
-}
-
-// ── Achievements ─────────────────────────────────────────────
-
-export const achievementApi = {
-  list: (token: string) =>
-    request('/achievements', { headers: { Authorization: `Bearer ${token}` } }),
 }

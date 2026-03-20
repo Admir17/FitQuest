@@ -94,9 +94,9 @@ export function useWorkout() {
 
   // ── Finish session ────────────────────────────────────────
 
-  const finishSession = useCallback(async (id: string): Promise<WorkoutSession> => {
-    const res = await workoutApi.finish(token!, id) as { data: WorkoutSession }
-    return res.data
+  const finishSession = useCallback(async (id: string): Promise<{ data: WorkoutSession; events: any[] }> => {
+    const res = await workoutApi.finish(token!, id) as { data: WorkoutSession; events: any[] }
+    return res
   }, [token])
 
   return {

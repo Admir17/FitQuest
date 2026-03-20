@@ -181,12 +181,22 @@ export default function WorkoutLoggerPage() {
       }, 0)
 
       const userBefore = await userApi.getMe(token) as any
-      await finishSession(realSessionId)
-      const userAfter = await userApi.getMe(token) as any
-      setUser(userAfter.data)  // Update nav XP in real time
+      const finishRes  = await finishSession(realSessionId) as any
+      const userAfter  = await userApi.getMe(token) as any
+      setUser(userAfter.data)
+
+      // Extract achievement and streak events from response
+      const events = finishRes?.events ?? []
+      const achievementEvents = events
+        .filter((e: any) => e.type === 'ACHIEVEMENT_UNLOCKED')
+        .map((e: any) => ({ name: e.payload.name, icon: e.payload.icon, xp_reward: e.payload.xp_reward }))
+      const streakEvent = events.find((e: any) => e.type === 'STREAK_UPDATED')
+
       setWorkoutFinished({
         xp: totalXp,
         levelUp: userAfter.data.level > userBefore.data.level ? userAfter.data.level : undefined,
+        achievements: achievementEvents.length > 0 ? achievementEvents : undefined,
+        streak: streakEvent?.payload?.current_streak,
       })
       router.push('/workouts')
     } finally { setFinishing(false) }

@@ -7,6 +7,7 @@ import { exerciseApi } from '../../../lib/api'
 import { useAtomValue } from 'jotai'
 import { accessTokenWithStorageAtom } from '../../../store/atoms'
 import { translateMuscleGroups, CATEGORY_LABELS as CAT } from '../../../lib/translations'
+import { playAchievementSound } from '../../../lib/sounds'
 
 const CATEGORIES = ['alle', 'strength', 'cardio', 'core', 'flexibility']
 const CATEGORY_LABELS = CAT
@@ -14,13 +15,18 @@ const CATEGORY_LABELS = CAT
 export default function ExercisesPage() {
   const token = useAtomValue(accessTokenWithStorageAtom)
   const { exercises, loading, loadExercises } = useWorkout()
-  const [category, setCategory] = useState('alle')
-  const [search, setSearch]     = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [newName, setNewName]   = useState('')
-  const [newCat, setNewCat]     = useState<Exercise['category']>('strength')
-  const [saving, setSaving]     = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [category, setCategory]       = useState('alle')
+  const [search, setSearch]           = useState('')
+  const [showForm, setShowForm]       = useState(false)
+  const [newName, setNewName]         = useState('')
+  const [newCat, setNewCat]           = useState<Exercise['category']>('strength')
+  const [saving, setSaving]           = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [deleteId, setDeleteId]       = useState<string | null>(null)
+  const [toastAchievements, setToastAchievements] = useState<Array<{ name: string; icon: string; xp_reward: number }> | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
+  const [barStarted, setBarStarted]       = useState(false)
+  const [barRunning, setBarRunning] = useState(false)
 
   useEffect(() => { loadExercises() }, [loadExercises])
 
@@ -33,9 +39,28 @@ export default function ExercisesPage() {
     e.preventDefault()
     if (!newName.trim() || !token) return
     setSaving(true)
+    setCreateError(null)
     try {
-      await exerciseApi.create(token, { name: newName.trim(), category: newCat, muscle_groups: [newCat] })
+      const res = await exerciseApi.create(token, { name: newName.trim(), category: newCat, muscle_groups: [newCat] }) as any
       setNewName(''); setShowForm(false); loadExercises()
+      const events = res?.events ?? []
+      const achievements = events
+        .filter((e: any) => e.type === 'ACHIEVEMENT_UNLOCKED')
+        .map((e: any) => ({ name: e.payload.name, icon: e.payload.icon, xp_reward: e.payload.xp_reward }))
+      if (achievements.length > 0) {
+        playAchievementSound()
+        setToastAchievements(achievements)
+        setBarRunning(false)
+        setToastVisible(true)
+        // Small delay so browser renders width:100% before starting transition
+        setTimeout(() => setBarRunning(true), 50)
+        setTimeout(() => {
+          setToastVisible(false)
+          setTimeout(() => { setToastAchievements(null); setBarRunning(false) }, 400)
+        }, 3000)
+      }
+    } catch (err: any) {
+      setCreateError(err.message ?? 'Fehler beim Erstellen.')
     } finally { setSaving(false) }
   }
 
@@ -63,6 +88,11 @@ export default function ExercisesPage() {
         <div className="rounded-2xl p-4 space-y-3" style={cardStyle}>
           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Neue Übung</p>
           <form onSubmit={handleCreate} className="space-y-3">
+            {createError && (
+              <div className="rounded-xl px-3 py-2 text-sm" style={{ background: 'var(--red-light)', color: 'var(--red)' }}>
+                {createError}
+              </div>
+            )}
             <input autoFocus type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
               placeholder="Name der Übung" className="w-full rounded-xl px-4 py-3 text-sm outline-none" style={inputStyle} />
             <select value={newCat} onChange={(e) => setNewCat(e.target.value as Exercise['category'])}
@@ -80,7 +110,7 @@ export default function ExercisesPage() {
                 style={{ background: 'var(--accent)', color: 'white', opacity: (saving || !newName.trim()) ? 0.5 : 1 }}>
                 {saving ? 'Erstellen…' : 'Erstellen'}
               </button>
-              <button type="button" onClick={() => setShowForm(false)}
+              <button type="button" onClick={() => { setShowForm(false); setCreateError(null) }}
                 className="px-4 text-sm rounded-xl" style={{ color: 'var(--text-secondary)', background: 'var(--bg-secondary)' }}>
                 Abbrechen
               </button>
@@ -143,8 +173,9 @@ export default function ExercisesPage() {
         </div>
       )}
 
+      {/* Delete confirmation */}
       {deleteId && (
-        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pb-28 sm:pb-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
           <div className="w-full max-w-sm rounded-2xl p-6" style={cardStyle}>
             <h2 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Übung löschen?</h2>
             <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Diese eigene Übung wird unwiderruflich gelöscht.</p>
@@ -158,6 +189,27 @@ export default function ExercisesPage() {
                 style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                 Abbrechen
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Achievement toast */}
+      {toastAchievements && (
+        <div className={`fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 w-72 ${toastVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+          <div className="rounded-2xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            {toastAchievements.map((ach, i) => (
+              <div key={i} className="px-5 py-4 flex items-center gap-3">
+                <span className="text-2xl">{ach.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Achievement freigeschaltet!</p>
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{ach.name}</p>
+                </div>
+                <span className="text-xs font-medium shrink-0" style={{ color: '#f59e0b' }}>+{ach.xp_reward} XP</span>
+              </div>
+            ))}
+            <div className="h-1" style={{ background: 'var(--bg-secondary)' }}>
+              <div className="h-full transition-all ease-linear" style={{ background: '#f59e0b', width: barRunning ? '0%' : '100%', transitionDuration: barRunning ? '2950ms' : '0ms' }} />
             </div>
           </div>
         </div>

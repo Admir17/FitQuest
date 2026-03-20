@@ -2,6 +2,8 @@ import { query, getClient } from '../../db/pool'
 import type { WorkoutSession, WorkoutSet } from '../../types'
 import type { GameEvent } from '../../types'
 import { calculateSetXp, levelForXp } from '../../utils/xp.calculator'
+import { updateStreak } from '../gamification/streak.service'
+import { checkAndAwardAchievements } from '../gamification/achievement.service'
 
 // ── List sessions ─────────────────────────────────────────────
 
@@ -67,7 +69,7 @@ export async function startSession(
 
 // ── Finish session ────────────────────────────────────────────
 
-export async function finishSession(id: string): Promise<WorkoutSession> {
+export async function finishSession(id: string): Promise<{ session: WorkoutSession; events: GameEvent[] }> {
   const client = await getClient()
   try {
     await client.query('BEGIN')
@@ -142,8 +144,30 @@ export async function finishSession(id: string): Promise<WorkoutSession> {
       [totalXp, id]
     )
 
+    const session = result.rows[0]
     await client.query('COMMIT')
-    return result.rows[0]
+
+    // Run streak + achievement checks outside transaction (non-critical)
+    const [streakResult, achievementEvents] = await Promise.all([
+      updateStreak(userId).catch(() => null),
+      checkAndAwardAchievements(userId).catch(() => []),
+    ])
+
+    const events: GameEvent[] = []
+
+    if (streakResult?.is_new_day) {
+      events.push({
+        type: 'STREAK_UPDATED',
+        payload: {
+          current_streak: streakResult.current_streak,
+          longest_streak: streakResult.longest_streak,
+        },
+      })
+    }
+
+    events.push(...(achievementEvents as GameEvent[]))
+
+    return { session, events }
   } catch (err) {
     await client.query('ROLLBACK')
     throw err

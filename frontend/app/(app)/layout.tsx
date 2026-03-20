@@ -27,7 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         .catch(() => {})
     }
     load()
-    const interval = setInterval(load, 1000)
+    const interval = setInterval(load, 5000)
     return () => clearInterval(interval)
   }, [pathname, token])
 
@@ -41,9 +41,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: '⚡' },
-    { href: '/workouts',  label: 'Workouts',  icon: '💪' },
-    { href: '/exercises', label: 'Übungen',   icon: '📋' },
+    { href: '/dashboard',   label: 'Dashboard',  icon: '⚡' },
+    { href: '/workouts',    label: 'Workouts',   icon: '💪' },
+    { href: '/exercises',   label: 'Übungen',    icon: '📋' },
+    { href: '/achievements',label: 'Erfolge',    icon: '🏆' },
   ]
 
   return (

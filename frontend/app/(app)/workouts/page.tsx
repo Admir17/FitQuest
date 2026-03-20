@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { accessTokenWithStorageAtom, workoutFinishedAtom, currentUserAtom } from '../../../store/atoms'
 import { workoutApi, userApi } from '../../../lib/api'
+import { playAchievementSound, playLevelUpSound } from '../../../lib/sounds'
 import { useWorkout } from '../../../hooks/useWorkout'
 
 interface Session {
@@ -41,6 +42,12 @@ export default function WorkoutsPage() {
   useEffect(() => {
     if (!workoutFinished) return
     setShowToast(true)
+    // Play sound based on event type
+    if (workoutFinished.levelUp) {
+      playLevelUpSound()
+    } else if (workoutFinished.achievements && workoutFinished.achievements.length > 0) {
+      playAchievementSound()
+    }
     const t = setTimeout(() => {
       setShowToast(false)
       setTimeout(() => setWorkoutFinished(null), 400)
@@ -142,10 +149,14 @@ export default function WorkoutsPage() {
         </div>
       )}
 
-      {/* XP / Level Up toast */}
+      {/* XP / Level Up / Achievement toast */}
       {workoutFinished && (
-        <div className={`fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
-          <div className="rounded-2xl shadow-2xl overflow-hidden min-w-[260px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <div className={`fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 w-72 ${showToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+          <div className="rounded-2xl shadow-2xl overflow-hidden relative" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <button onClick={() => { setShowToast(false); setTimeout(() => setWorkoutFinished(null), 400) }}
+              className="absolute top-3 right-3 text-sm z-10" style={{ color: 'var(--text-muted)' }}>✕</button>
+
+            {/* XP / Level Up */}
             {workoutFinished.levelUp ? (
               <div className="px-5 py-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -169,11 +180,36 @@ export default function WorkoutsPage() {
                 </div>
               </div>
             )}
+
+            {/* Streak */}
+            {workoutFinished.streak && workoutFinished.streak > 1 && (
+              <div className="px-5 py-3 flex items-center gap-2" style={{ borderTop: '1px solid var(--border)' }}>
+                <span>🔥</span>
+                <p className="text-sm font-medium" style={{ color: '#ef4444' }}>
+                  {workoutFinished.streak} Tage Streak!
+                </p>
+              </div>
+            )}
+
+            {/* Achievements */}
+            {workoutFinished.achievements && workoutFinished.achievements.length > 0 && (
+              <div style={{ borderTop: '1px solid var(--border)' }}>
+                {workoutFinished.achievements.map((ach, i) => (
+                  <div key={i} className="px-5 py-3 flex items-center gap-3">
+                    <span className="text-xl">{ach.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Achievement freigeschaltet!</p>
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{ach.name}</p>
+                    </div>
+                    <span className="text-xs font-medium shrink-0" style={{ color: '#f59e0b' }}>+{ach.xp_reward} XP</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="h-0.5" style={{ background: 'var(--border)' }}>
               <div className="h-full transition-all ease-linear" style={{ background: 'var(--accent)', width: showToast ? '0%' : '100%', transitionDuration: showToast ? '3000ms' : '0ms' }} />
             </div>
-            <button onClick={() => { setShowToast(false); setTimeout(() => setWorkoutFinished(null), 400) }}
-              className="absolute top-3 right-3 text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
           </div>
         </div>
       )}
