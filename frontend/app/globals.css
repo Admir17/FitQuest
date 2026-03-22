@@ -34,3 +34,45 @@ html, body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Global hover & interaction utilities ───────────────────── */
+
+/* Cards */
+.hover-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.hover-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-hover) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+/* Buttons */
+.btn-primary {
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-secondary {
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-secondary:hover { background: var(--bg-hover) !important; }
+
+/* Nav links */
+.nav-link {
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.nav-link:hover { background: var(--bg-hover) !important; color: var(--text-primary) !important; }
+
+/* List rows */
+.list-row {
+  transition: background 0.15s ease;
+}
+.list-row:hover { background: var(--bg-hover) !important; }
+
+/* Tab bar items */
+.tab-item {
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+.tab-item:active { transform: scale(0.92); }

@@ -88,7 +88,7 @@ export default function AchievementsPage() {
       ) : (
         <div className="space-y-2">
           {filtered.map((ach) => (
-            <div key={ach.id} className="rounded-2xl p-4 flex items-center gap-4 transition-all"
+            <div key={ach.id} className="hover-card rounded-2xl p-4 flex items-center gap-4"
               style={{ ...cardStyle, opacity: ach.unlocked_at ? 1 : 0.5 }}>
               <div className="text-3xl shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
                 style={{ background: ach.unlocked_at ? 'rgba(245,158,11,0.15)' : 'var(--bg-secondary)' }}>

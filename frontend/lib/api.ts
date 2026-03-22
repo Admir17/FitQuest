@@ -62,6 +62,12 @@ export const achievementApi = {
 export const userApi = {
   getMe: (token: string) =>
     request('/users/me', { headers: { Authorization: `Bearer ${token}` } }),
+
+  getStats: (token: string) =>
+    request('/users/me/stats', { headers: { Authorization: `Bearer ${token}` } }),
+
+  getLeaderboard: (token: string) =>
+    request('/users/leaderboard', { headers: { Authorization: `Bearer ${token}` } }),
 }
 
 // ── Workouts ─────────────────────────────────────────────────

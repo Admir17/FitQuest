@@ -143,7 +143,7 @@ export default function ExercisesPage() {
       ) : (
         <div className="rounded-2xl overflow-hidden" style={cardStyle}>
           {filtered.map((ex, i) => (
-            <div key={ex.id} className="px-4 py-3 flex items-center justify-between"
+            <div key={ex.id} className="list-row px-4 py-3 flex items-center justify-between"
               style={{ borderBottom: i < filtered.length - 1 ? `1px solid var(--border)` : 'none' }}>
               <div className="min-w-0 mr-3">
                 <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{ex.name}</p>

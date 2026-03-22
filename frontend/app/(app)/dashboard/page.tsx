@@ -81,7 +81,7 @@ export default function DashboardPage() {
 
       {/* Streak card */}
       {streak && streak.current_streak > 0 && (
-        <div className="rounded-2xl p-4 flex items-center gap-4"
+        <div className="hover-card rounded-2xl p-4 flex items-center gap-4"
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <div className="text-3xl">🔥</div>
           <div className="flex-1">
@@ -104,7 +104,7 @@ export default function DashboardPage() {
       {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
         <button onClick={handleStart} disabled={starting}
-          className="rounded-2xl p-5 text-left transition-all active:scale-95"
+          className="hover-card rounded-2xl p-5 text-left cursor-pointer"
           style={{ background: 'var(--accent)', opacity: starting ? 0.7 : 1 }}>
           <span className="text-2xl block mb-2">💪</span>
           <p className="font-semibold text-white text-sm">{starting ? 'Startet…' : 'Workout starten'}</p>
@@ -112,7 +112,7 @@ export default function DashboardPage() {
         </button>
 
         <button onClick={() => router.push('/workouts')}
-          className="rounded-2xl p-5 text-left transition-all active:scale-95"
+          className="hover-card rounded-2xl p-5 text-left cursor-pointer"
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <span className="text-2xl block mb-2">📋</span>
           <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Verlauf</p>
@@ -120,7 +120,7 @@ export default function DashboardPage() {
         </button>
 
         <button onClick={() => router.push('/achievements')}
-          className="rounded-2xl p-4 text-left transition-all active:scale-95 col-span-2"
+          className="hover-card rounded-2xl p-4 text-left cursor-pointer col-span-2"
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
             <span className="text-2xl">🏆</span>
